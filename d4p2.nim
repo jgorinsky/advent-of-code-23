@@ -1,8 +1,6 @@
 import std/strutils
 import std/sequtils
 import std/nre
-import std/sugar
-import std/tables
 import std/sets
 import std/enumerate
 
@@ -21,17 +19,15 @@ var cards = newSeq[int]()
 
 for i, line in enumerate(file.lines):
     let match = line.match(cardRe)
-    let winning = match.get.captures["winning"]
+
+    let winCount = match.get.captures.toSeq[1..2].mapIt(
+        it.get
         .split(" ")
         .filterIt(it.isEmptyOrWhitespace.not)
         .mapIt(it.parseInt).toHashSet
-    let mine = match.get.captures["mine"]
-        .split(" ")
-        .filterIt(it.isEmptyOrWhitespace.not)
-        .mapIt(it.parseInt).toHashSet
+    ).foldl(a.intersection(b)).len
 
     cards.update(i)
-    let winCount = winning.intersection(mine).toSeq().len
     for j in countup(1, winCount):
         cards.update(i+j, cards[i])
 
