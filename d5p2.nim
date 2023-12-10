@@ -3,9 +3,6 @@ import std/sequtils
 import std/sugar
 import std/tables
 import std/enumerate
-import std/times
-import threadpool
-{.experimental: "parallel".}
 
 let file = "d5.txt"
 
@@ -15,9 +12,7 @@ type Mapping = object
     destStart: int
     destEnd: int
 type Mappings = seq[Mapping]
-type MapTable = OrderedTable[system.string, Mappings]
 proc newMap(): Mappings = newSeq[Mapping]()
-let time = cpuTime()
 
 var seedDef: string
 var maps = {
@@ -56,9 +51,19 @@ for i, line in enumerate(file.lines):
         srcEnd: parts[1] + parts[2] - 1,
     ))
 
-iterator seedIter(rng: (int, int)): int =
-    for i in countup(rng[0], rng[0] + rng[1] - 1):
-        yield i
+iterator seedIter(line: string): int =
+    let seedRanges = collect:
+        let vals = line.split(":")[1]
+            .split(" ")
+            .filterIt(it.isEmptyOrWhitespace.not)
+            .mapIt(it.parseInt)
+        for i, x in vals:
+            if i mod 2 == 0:
+                (x, vals[i+1])
+
+    for rng in seedRanges:
+        for i in countup(rng[0], rng[0] + rng[1] - 1):
+            yield i
             
 proc findMapping(mappings: Mappings, val: int): int =
     for mapping in mappings:
@@ -67,35 +72,16 @@ proc findMapping(mappings: Mappings, val: int): int =
     return val
 
 
-proc traverse(seed: int, maps: MapTable): int = 
+proc traverse(seed: int): int = 
     var r = seed
     for key in maps.keys:
         r = findMapping(maps[key], r)
     return r
 
 
-let seedRanges = collect:
-    let vals = seedDef.split(":")[1]
-        .split(" ")
-        .filterIt(it.isEmptyOrWhitespace.not)
-        .mapIt(it.parseInt)
-    for i, x in vals:
-        if i mod 2 == 0:
-            (x, vals[i+1])
-
-proc minForRange(rng: (int, int), maps: MapTable): float =
-    var min = 99999999999999999
-    for seed in seedIter(rng):
-        let r = traverse(seed, maps)
-        if r < min:
-            min = r
-    return float(min)
-
 var min = 99999999999999999
-parallel:
-    var ch = newSeq[float](seedRanges.len)
-    for i, rng in seedRanges:
-        ch[i] = spawn minForRange(rng, maps)
-
-echo ch.min
-echo "Time taken: ", cpuTime() - time
+for seed in seedIter(seedDef):
+    let r = traverse(seed)
+    if r < min:
+        min = r
+echo min
