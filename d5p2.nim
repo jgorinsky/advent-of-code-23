@@ -3,6 +3,7 @@ import std/sequtils
 import std/sugar
 import std/tables
 import std/enumerate
+import std/times
 import threadpool
 {.experimental: "parallel".}
 
@@ -16,6 +17,7 @@ type Mapping = object
 type Mappings = seq[Mapping]
 type MapTable = OrderedTable[system.string, Mappings]
 proc newMap(): Mappings = newSeq[Mapping]()
+let time = cpuTime()
 
 var seedDef: string
 var maps = {
@@ -96,3 +98,4 @@ parallel:
         ch[i] = spawn minForRange(rng, maps)
 
 echo ch.min
+echo "Time taken: ", cpuTime() - time
